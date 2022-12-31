@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+#modal-root {
+  z-index: 1;
+}
+
+html,
+body {
+  font-family: "Open Sans", sans-serif;
+  padding: 0;
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+* {
+  box-sizing: border-box;
+}
+
+input {
+  @apply outline-none focus:outline-none;
+}
+
+textarea {
+  @apply outline-none focus:outline-none p-2;
+}
+
+/* * {
+  outline: 1px solid red !important;
+} */
+
+.swiper-container {
+  width: 375px;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  transform: scale(2);
+  background-image: url(../public/assets/icon-arrow-left.svg);
+  background-repeat: no-repeat;
+  background-size: 100% auto;
+  background-position: center;
+}
+
+.swiper-button-next {
+  rotate: 180deg;
+}
+
+.swiper-button-prev:after,
+.swiper-button-next::after {
+  display: none;
+}
+/* MEDIA QUERIES SWIPER */
+
+/* .products-grid {
+  display: grid;
+} */
+
+@media screen and (min-width: 375px) {
+  .swiper-container {
+    width: 375px;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13.875rem, 1fr));
+    gap: 0.4rem;
+  }
+}
+
+@media screen and (min-width: 640px) {
+  .swiper-container {
+    width: 640px;
+  }
+}
+
+@media screen and (min-width: 968px) {
+  .swiper-container {
+    width: 968px;
+  }
+}
+
+@media screen and (min-width: 1280) {
+  .swiper-container {
+    width: 1280;
+  }
+}

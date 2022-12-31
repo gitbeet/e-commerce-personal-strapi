@@ -1,0 +1,23 @@
+.mobileMenu,
+.mobileMenuShow{
+    position: fixed;
+    min-height: 100vh;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    padding-left: 2.5rem;
+    padding-right: 7rem;
+    padding-top: 8rem;
+    z-index: 20;
+    background-color: white;
+    transition: .4s;
+}
+
+.mobileMenu{
+    transform: translate(-100%);
+}
+
+.mobileMenuShow{
+    transform: translate(0);
+}
+
