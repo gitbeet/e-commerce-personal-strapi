@@ -4,16 +4,9 @@ import SearchBar from "./SearchBar";
 import SearchResultCard from "./SearchResultCard";
 import useDebounce from "../hooks/useDebounce";
 import { useEffect } from "react";
-import algoliasearch from "algoliasearch/lite";
 import { AlgoliaResultInterface } from "Models";
-
-const client = algoliasearch(
-  process.env.NEXT_PUBLIC_ALGOLIA_APPLICATION_ID || "app_id",
-  process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY || "api_key"
-);
-const index = client.initIndex(
-  process.env.NEXT_PUBLIC_ALGOLIA_INDEX || "index"
-);
+import { useLazyQuery } from "@apollo/client";
+import { SEARCH_ITEMS } from "gqlQueries";
 
 const SearchComponent = (): JSX.Element => {
   const [results, setResults] = useState<AlgoliaResultInterface[]>([]);
@@ -21,32 +14,28 @@ const SearchComponent = (): JSX.Element => {
   const debouncedValue: string = useDebounce(input, 1000);
 
   useEffect(() => {
-    const performSearch = async (value: string) => {
-      const { hits } = await index.search(value, {
-        hitsPerPage: 3,
-      });
-
-      const results = hits.map((hit) => {
-        const {
-          objectID: id,
-          title,
-          image,
-          price,
-        } = hit as {
-          objectID: string;
-          title: string;
-          image: string;
-          price: number;
-        };
-
-        return { id, title, image, price };
-      });
-
-      setResults(results);
-    };
-
-    performSearch(debouncedValue);
+    if (!debouncedValue) {
+      setResults([]);
+      return;
+    }
+    searchItems();
   }, [debouncedValue]);
+
+  const [searchItems, { loading, data, error }] = useLazyQuery(SEARCH_ITEMS, {
+    variables: {
+      input: debouncedValue,
+    },
+    onCompleted(data) {
+      const prodData = data.products.data.map((product: any) => {
+        const { id } = product;
+        const { price, image, title } = product.attributes;
+        return { id, price, image, title };
+      });
+      console.log(prodData);
+      setResults(prodData);
+      // console.log(data.products.data);
+    },
+  });
 
   return (
     <div className="relative w-full">
@@ -67,7 +56,7 @@ const SearchComponent = (): JSX.Element => {
         )}
       </div>
       {debouncedValue && results.length < 1 ? (
-        <p className="text-xl">Nothing found.</p>
+        <p className="text-md absolute">Nothing found.</p>
       ) : null}
     </div>
   );

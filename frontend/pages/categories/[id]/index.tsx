@@ -266,7 +266,6 @@ const Category = () => {
   if (error || minPriceError || maxPriceError || brandsError)
     return <h1>error</h1>;
 
-  console.log(productData);
   return (
     <>
       <ScrollToTopElement scrollTrigger={products} />

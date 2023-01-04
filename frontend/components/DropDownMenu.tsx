@@ -28,7 +28,6 @@ const DropDownMenu = ({
       return;
     }
     const timer = setTimeout(() => setIsOpen(false), 700);
-    console.log(isO);
     return () => {
       clearTimeout(timer);
     };

@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "specs",
+  "info": {
+    "singularName": "spec",
+    "pluralName": "specs",
+    "displayName": "spec"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "category": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    }
+  }
+}

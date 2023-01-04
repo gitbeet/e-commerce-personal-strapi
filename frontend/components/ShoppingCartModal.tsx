@@ -5,7 +5,6 @@ import ShoppingCartModalProduct from "./ShoppingCartModalProduct";
 import { v4 as uuid } from "uuid";
 import Button from "./Button";
 import { formatCurrency } from "../utilities/formatCurrency";
-import { ShoppingCartProductInterface } from "Models";
 
 interface Props {
   show: boolean;
@@ -15,9 +14,17 @@ interface Props {
 const ShoppingCartModal = ({ show, onClose }: Props) => {
   const { shoppingCart } = useShoppingCart();
 
-  let totalPrice = shoppingCart.reduce(
-    (acc: number, product: ShoppingCartProductInterface) =>
-      acc + product.price * product.quantity,
+  let totalPrice = shoppingCart?.reduce(
+    (
+      acc: number,
+      product: {
+        id: string;
+        title: string;
+        price: number;
+        image: string;
+        quantity: number;
+      }
+    ) => acc + product.price * product.quantity,
     0
   );
 
@@ -28,11 +35,22 @@ const ShoppingCartModal = ({ show, onClose }: Props) => {
           <>
             <div className="fixed flex flex-col justify-center items-center  w-[min(90%,450px)]  top-[5%]  z-[9] left-1/2 -translate-x-1/2 bg-neutral-900 p-8  rounded-md shadow-lg ">
               <div className="flex flex-col max-h-[25rem] overflow-auto  space-y-8 border-b border-neutral-600 pt-4 pb-16 w-full">
-                {shoppingCart.map((product: ShoppingCartProductInterface) => {
-                  return (
-                    <ShoppingCartModalProduct key={uuid()} product={product} />
-                  );
-                })}
+                {shoppingCart?.map(
+                  (product: {
+                    id: string;
+                    title: string;
+                    price: number;
+                    image: string;
+                    quantity: number;
+                  }) => {
+                    return (
+                      <ShoppingCartModalProduct
+                        key={uuid()}
+                        product={product}
+                      />
+                    );
+                  }
+                )}
               </div>
               <div className="flex justify-between w-full">
                 <p>Total</p>

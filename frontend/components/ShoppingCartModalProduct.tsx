@@ -1,16 +1,21 @@
 /* eslint-disable @next/next/no-img-element */
-import { ShoppingCartProductInterface } from "Models";
 import { useShoppingCart } from "../context/ShoppingCartContext";
 import { formatCurrency } from "../utilities/formatCurrency";
 import SmallButton from "./SmallButton";
 
 interface Props {
-  product: ShoppingCartProductInterface;
+  product: {
+    id: string;
+    title: string;
+    price: number;
+    image: string;
+    quantity: number;
+  };
 }
 const ShoppingCartModalProduct = ({ product }: Props): JSX.Element => {
   const { removeItem, changeQuantity } = useShoppingCart();
 
-  const { id, image, title, price, quantity } = product;
+  const { id, quantity, price, image, title } = product;
 
   if (!product) return <h1>loading data...</h1>;
 

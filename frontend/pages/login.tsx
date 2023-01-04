@@ -1,20 +1,16 @@
 import Head from "next/head";
 import React, { useState } from "react";
-import { useRouter } from "next/router";
-import { useAuth } from "../context/AuthContext";
 import Button from "../components/Button";
 import Link from "next/link";
+import { setToken, unsetToken } from "lib/auth";
+import { useAuth, useFetchUser } from "context/AuthContext";
 
 const Login = (): JSX.Element => {
-  const router = useRouter();
-
-  const { login, user, signout } = useAuth();
-
   const [userData, setUserData] = useState<{ email: string; password: string }>(
     { email: "", password: "" }
   );
+  const { user, loading } = useFetchUser();
   const [errorMessage, setErrorMessage] = useState<string>("");
-
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
     setUserData((prev) => {
@@ -22,30 +18,30 @@ const Login = (): JSX.Element => {
     });
   }
 
-  async function handleSubmit() {
-    setErrorMessage("");
-    try {
-      await login(userData.email, userData.password);
-      router.back();
-      // ANY ?!?!
-    } catch (error: any) {
-      if (error.code === "auth/invalid-email") {
-        setErrorMessage("You have enetered an invalid email");
+  const handleSubmit = async () => {
+    const responseData = await fetch(
+      `${process.env.NEXT_PUBLIC_STRAPI_URL}/api/auth/local`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: userData.email,
+          password: userData.password,
+        }),
       }
-      if (error.code === "auth/user-not-found") {
-        setErrorMessage("User not found");
-      }
-      if (error.code === "auth/wrong-password") {
-        setErrorMessage("Wrong Password");
-      }
-    }
-  }
+    );
+
+    const response = await responseData.json();
+    setToken(response);
+  };
 
   if (user) {
     return (
       <div>
-        <h1>You are already logged in as {user.email}</h1>
-        <button onClick={signout}>Logout</button>
+        <h1>You are already logged in as {user}</h1>
+        <button onClick={unsetToken}>Logout</button>
       </div>
     );
   }

@@ -4,6 +4,7 @@ export interface CommentInterface {
   user: string;
   userId: string;
   userPhoto?: string;
+  userRating: number;
 }
 
 export interface RatedByInterface {
@@ -17,16 +18,16 @@ export interface RatingInterface {
 }
 
 export interface ProductInterface {
-  category: string;
-  comments: CommentInterface[];
-  description: string;
   id: string;
-  image: string;
-  price: number;
-  ratedBy: RatedByInterface[];
-  rating: RatingInterface;
   title: string;
+  category: string;
+  description: string;
+  price: number;
+  image: string;
+  rating: RatingInterface;
   discount: number;
+  ratedBy: RatedByInterface[];
+  comments: CommentInterface[];
 }
 
 export interface ProductCardInterface {
@@ -75,4 +76,11 @@ export interface BrandInterface {
   name: string;
   selected: boolean;
   occurance: number;
+}
+
+export interface SimilarProductInterface {
+  id: string;
+  price: number;
+  image: string;
+  title: string;
 }

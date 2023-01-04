@@ -47,17 +47,23 @@
       "type": "integer",
       "required": true
     },
-    "comment": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::comment.comment",
-      "mappedBy": "product"
-    },
     "brand": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::brand.brand",
       "inversedBy": "products"
+    },
+    "comments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::comment.comment",
+      "mappedBy": "product"
+    },
+    "user_ratings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-rating.user-rating",
+      "mappedBy": "product"
     }
   }
 }

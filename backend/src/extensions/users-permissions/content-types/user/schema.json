@@ -68,6 +68,23 @@
       "relation": "oneToMany",
       "target": "api::comment.comment",
       "mappedBy": "user"
+    },
+    "avatar": {
+      "type": "string",
+      "required": true,
+      "default": "default_avatar"
+    },
+    "cart": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::cart.cart",
+      "mappedBy": "users_permissions_user"
+    },
+    "user_ratings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-rating.user-rating",
+      "mappedBy": "users_permissions_user"
     }
   }
 }

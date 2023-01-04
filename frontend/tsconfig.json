@@ -64,7 +64,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "context/AuthContext.js"],
   "exclude": ["node_modules"],
   "plugins": [
     {

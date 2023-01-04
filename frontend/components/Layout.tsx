@@ -1,3 +1,4 @@
+import { AuthProvider } from "context/AuthContext";
 import { useModal } from "../context/ModalContext";
 import Footer from "./Footer";
 import Meta from "./Meta";

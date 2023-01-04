@@ -8,7 +8,7 @@ import UserButton from "./UserButton";
 
 const Nav = (): JSX.Element => {
   return (
-    <nav className="relative border-b border-neutral-800 w-full px-4 pt-4 pb-6 space-y-8">
+    <nav className="relative border-b border-neutral-800 w-full px-4 pt-4 pb-6 md:py-8 space-y-8">
       <div className=" flex justify-between items-center ">
         <div className="lg:hidden">
           <MobileMenuButton />

@@ -3,19 +3,15 @@ import Comment from "./Comment";
 
 interface Props {
   comments: CommentInterface[];
-  deleteComment: (val: string) => void;
-  handleEditChange: (val: string) => void;
   handleSetEditCommentId: (val: string) => void;
-  handleEditSubmit: () => void;
   ratedByData: RatedByInterface[];
+  editCommentId: string;
 }
 
 const CommentsList = ({
   comments,
-  deleteComment,
-  handleEditChange,
   handleSetEditCommentId,
-  handleEditSubmit,
+  editCommentId,
   ratedByData,
 }: Props): JSX.Element => {
   const ratingNotAvailable = {
@@ -34,10 +30,8 @@ const CommentsList = ({
             }
             key={comment.id}
             comment={comment}
-            deleteComment={deleteComment}
-            handleEditChange={handleEditChange}
             handleSetEditCommentId={handleSetEditCommentId}
-            handleEditSubmit={handleEditSubmit}
+            editCommentId={editCommentId}
           />
         );
       })}

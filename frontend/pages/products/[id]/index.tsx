@@ -1,14 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable @next/next/no-img-element */
-import { v4 as uuid } from "uuid";
 import { formatCurrency } from "../../../utilities/formatCurrency";
 import { useEffect, useState } from "react";
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "../../../context/AuthContext";
 import { useRouter } from "next/router";
 import { GetServerSideProps } from "next/types";
-import db from "../../../firebase/config";
-import { arrayUnion, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import SimilarProductsList from "../../../components/SimilarProductsList";
 import CommentsList from "../../../components/CommentsList";
 import Button from "../../../components/Button";
@@ -20,12 +16,25 @@ import {
   RatedByInterface,
   RatingInterface,
 } from "Models";
+import { useQuery, useMutation } from "@apollo/client";
+import { client } from "pages/_app";
+import { getIdFromServerCookie, getTokenFromLocalCookie } from "lib/auth";
+import {
+  COMMENTS,
+  CREATE_COMMENT,
+  CREATE_USER_RATING,
+  GET_RATING,
+  GET_USER_RATING,
+  PRODUCT,
+  UPDATE_RATING,
+} from "gqlQueries";
 
 interface Props {
   product: ProductInterface;
+  userIdCookie: any;
 }
 
-export default function Product({ product }: Props): JSX.Element {
+export default function Product({ product, userIdCookie }: Props): JSX.Element {
   const {
     image,
     title,
@@ -33,24 +42,134 @@ export default function Product({ product }: Props): JSX.Element {
     description,
     category,
     id,
-    comments: serverSideComments,
     rating: serverSideRating,
     ratedBy,
   } = product;
-  const { user } = useAuth();
+
   const router = useRouter();
+  const { user } = useAuth();
   const formattedPrice = formatCurrency(price);
   const [commentText, setCommentText] = useState<string>("");
-  const [comments, setComments] =
-    useState<CommentInterface[]>(serverSideComments);
+  const [comments, setComments] = useState<CommentInterface[]>([]);
   const [rating, setRating] = useState<RatingInterface>(serverSideRating);
-  const [editCommentText, setEditCommentText] = useState<string>("");
   const [editCommentId, setEditCommentId] = useState<string>("");
   const [userRating, setUserRating] = useState<number>(Math.round(rating.rate));
   const [ratedByUser, setRatedByUser] = useState<boolean>(false);
   const [alreadyRatedMessage, setAlreadyRatedMessage] =
     useState<boolean>(false);
   const [ratedByData, setRatedByData] = useState<RatedByInterface[]>(ratedBy);
+
+  const {
+    data,
+    loading: getCommentsLoading,
+    error: getCommentsError,
+  } = useQuery(COMMENTS, {
+    variables: {
+      id,
+    },
+    onCompleted(data) {
+      const comms = data.comments.data.map((comment: any) => {
+        const { text, user: userData } = comment.attributes;
+        const { id: userId } = userData.data;
+        const { username: user, user_ratings } = userData.data.attributes;
+        const userRating = user_ratings.data[0]?.attributes.rating || 0;
+        return { text, user, id: comment.id, userId, userRating };
+      });
+      setComments(comms);
+    },
+    onError(error) {
+      console.log(error);
+    },
+  });
+
+  const [updateUserRatingMutation] = useMutation(CREATE_USER_RATING, {
+    variables: {
+      userId: userIdCookie,
+      rating: userRating,
+      productId: id,
+    },
+    context: {
+      headers: {
+        Authorization: `Bearer ${getTokenFromLocalCookie()}`,
+      },
+    },
+    onCompleted() {
+      client.refetchQueries({
+        include: [GET_RATING, GET_USER_RATING],
+      });
+      console.log("Updated rating");
+    },
+    onError(error, clientOptions) {
+      console.log(error);
+    },
+  });
+
+  const [rateProductMutation] = useMutation(UPDATE_RATING, {
+    variables: {
+      id,
+      rating: Number(
+        (
+          Math.round(
+            ((rating.rate * rating.count + userRating) / (rating.count + 1)) *
+              10
+          ) / 10
+        ).toFixed(1)
+      ),
+      ratingCount: rating.count + 1,
+    },
+    context: {
+      headers: {
+        Authorization: `Bearer ${getTokenFromLocalCookie()}`,
+      },
+    },
+    onCompleted() {
+      console.log("Rate product completed");
+    },
+  });
+
+  useQuery(GET_RATING, {
+    variables: {
+      id,
+    },
+    onCompleted(data) {
+      const { rating, ratingCount } = data.products.data[0]?.attributes;
+      setRating({ rate: rating, count: ratingCount });
+    },
+  });
+
+  useQuery(GET_USER_RATING, {
+    variables: {
+      userId: userIdCookie,
+      productId: id,
+    },
+    onCompleted(data) {
+      const userProductRating = data.userRatings.data[0]?.attributes.rating;
+      setRatedByUser(!!userProductRating);
+      console.log("user product rating", userProductRating);
+    },
+    onError(error) {
+      console.log(error);
+    },
+  });
+
+  const [
+    createCommentApollo,
+    { error: createCommentError, loading: createCommentLoading },
+  ] = useMutation(CREATE_COMMENT, {
+    variables: {
+      text: commentText,
+      user: userIdCookie,
+      product: id,
+    },
+    context: {
+      headers: {
+        Authorization: `Bearer ${getTokenFromLocalCookie()}`,
+      },
+    },
+    onCompleted() {
+      setCommentText("");
+    },
+  });
 
   function toggleAlreadyRatedMessage(): void {
     if (!ratedByUser) return;
@@ -69,182 +188,23 @@ export default function Product({ product }: Props): JSX.Element {
     changeUserRatingOnHover(Math.round(rating.rate));
   }, [rating.rate]);
 
-  // --------------------- GET PRODUCT DATA ---------------------
-
-  const { isLoading, isError } = useQuery(
-    [`get-product-data-${id}`],
-    () => {
-      return getComments();
-    },
-    {
-      onSuccess: (data) => {
-        if (!data) return;
-        setComments(data.comments);
-        setRating(data.rating);
-        setRatedByData(data.ratedBy);
-        if (!user) return;
-        if (
-          data.ratedBy.findIndex(
-            (rating: RatedByInterface) => rating.userId === user.uid
-          ) !== -1
-        ) {
-          setRatedByUser(true);
-        } else {
-          setRatedByUser(false);
-        }
-      },
-      onError: () => {
-        console.log(isError);
-      },
-    }
-  );
-  // TYPE THIS!
-  async function getComments() {
-    const productRef = doc(db, "productsList", id);
-    const productSnapshot = await getDoc(productRef);
-    let data = productSnapshot.data();
-    return data;
-  }
-
-  // -----------------------------------------------------------
-
-  // --------------------- RATING THE PRODUCT ------------------
-
   async function rateProduct() {
     if (ratedByUser) return;
-    const docRef = doc(db, "productsList", id);
-    await setDoc(
-      docRef,
-      {
-        rating: {
-          count: rating.count + 1,
-          rate: (
-            Math.round(
-              ((rating.rate * rating.count + userRating) / (rating.count + 1)) *
-                10
-            ) / 10
-          ).toFixed(1),
-        },
-      },
-      { merge: true }
-    );
-    await updateDoc(docRef, {
-      ratedBy: arrayUnion({ userId: user?.uid, rating: userRating }),
-    });
-  }
-
-  const rateProductReactQuery = () => {
-    const queryClient = useQueryClient();
-    return useMutation(rateProduct, {
-      onSuccess: () => {
-        queryClient.invalidateQueries([`get-product-data-${id}`]);
-      },
-    });
-  };
-
-  const { mutate: rateProductMutate } = rateProductReactQuery();
-
-  // -------------------------------------------------------
-
-  // --------------------- ADD COMMENT ---------------------
-
-  async function addComment() {
-    const docRef = doc(db, "productsList", id);
-    await updateDoc(docRef, {
-      comments: arrayUnion({
-        user: user?.email,
-        userId: user?.uid,
-        text: commentText,
-        id: uuid(),
-      }),
-    });
-    setCommentText("");
-  }
-
-  const addCommentReactQuery = () => {
-    const queryClient = useQueryClient();
-    return useMutation(addComment, {
-      onSuccess: () => {
-        queryClient.invalidateQueries([`get-product-data-${id}`]);
-      },
-    });
-  };
-
-  const { mutate: addCommentMutate } = addCommentReactQuery();
-
-  // ----------------------------------------------------------
-
-  // --------------------- DELETE COMMENT ---------------------
-
-  const deleteCommentReactQuery = () => {
-    const queryClient = useQueryClient();
-    return useMutation(deleteComment, {
-      onSuccess: () => {
-        queryClient.invalidateQueries([`get-product-data-${id}`]);
-      },
-    });
-  };
-  async function deleteComment(commentId: string) {
-    const docRef = doc(db, "productsList", id);
-    await setDoc(
-      docRef,
-      {
-        comments: comments.filter((c) => c.id !== commentId),
-      },
-      { merge: true }
-    );
-  }
-
-  const { mutate: deleteCommentMutate } = deleteCommentReactQuery();
-
-  // -----------------------------------------------------------
-
-  // --------------------- EDIT COMMENT ---------------------
-
-  function handleEditChange(value: string) {
-    setEditCommentText(value);
+    // mutation => userRating => rating
+    // mutation product rating => calc new rating
+    rateProductMutation();
+    updateUserRatingMutation();
   }
 
   function handleSetEditCommentId(id: string) {
     setEditCommentId(id);
   }
 
-  async function handleEditSubmit() {
-    const docRef = doc(db, "productsList", id);
-    const p = comments.map((comment) =>
-      comment.id === editCommentId
-        ? { ...comment, text: editCommentText }
-        : comment
-    );
-    await setDoc(
-      docRef,
-      {
-        comments: p,
-      },
-      { merge: true }
-    );
-  }
-
-  const editCommentReactQuery = () => {
-    const queryClient = useQueryClient();
-    // don't call the function here
-    return useMutation(handleEditSubmit, {
-      onSuccess: () => {
-        queryClient.invalidateQueries([`get-product-data-${id}`]);
-      },
-    });
-  };
-
-  const { mutate: editCommentMutate } = editCommentReactQuery();
-
-  // -----------------------------------------------------------
-
   const imageSection = (
-    <div className="w-[min(90%,500px)] lg:min-w-[30%]">
+    <div className="w-[min(90%,500px)] lg:min-w-[30%] saturate-0">
       <img src={image} alt="img of the product" />
     </div>
   );
-
   const bodySection = (
     <div className="space-y-12 lg:w-1/2">
       <div className="">
@@ -258,7 +218,7 @@ export default function Product({ product }: Props): JSX.Element {
                   userRating={userRating}
                   rating={rating}
                   rateable={(user && !ratedByUser) || false}
-                  rateProduct={rateProductMutate}
+                  rateProduct={rateProduct}
                   changeUserRatingOnHover={changeUserRatingOnHover}
                   toggleAlreadyRatedMessage={toggleAlreadyRatedMessage}
                 />
@@ -281,67 +241,79 @@ export default function Product({ product }: Props): JSX.Element {
         <h1 className="font-semibold text-lg">Description</h1>
         <p className="text-neutral-400 text-lg leading-8 ">{description}</p>
       </div>
-      <div className="md:w-fit ">
+      <div className="md:w-fit">
         <AddToCart product={product} />
       </div>
     </div>
   );
 
-  if (isLoading || !comments) return <h1>loading...</h1>;
   return (
     <div className="flex flex-col max-w-[100vw] justify-center items-center p-6 space-y-10 pt-12">
       <p
         onClick={() => router.back()}
         className="self-start cursor-pointer text-neutral-400"
       >
-        Go back
+        Go back {ratedByUser.toString()}{" "}
+        {(
+          Math.round(
+            ((rating.rate * rating.count + userRating) / (rating.count + 1)) *
+              10
+          ) / 10
+        ).toFixed(1)}{" "}
       </p>
       <div className="lg:space-x-16 space-y-24 flex flex-col justify-center items-center lg:flex-row lg:space-y-0 ">
         {imageSection}
         {bodySection}
       </div>
+
       <div className="flex flex-col w-full space-y-4 py-6   border-neutral-500 rounded-md overflow-auto">
         <p className="py-2 text-xl font-semibold uppercase bg-gradient-to-r   from-primary-600 to-primary-550 via-primary-500  text-neutral-900 text-center w-full">
           Client opinions
         </p>
-        {isLoading ? (
-          <h1>loading...</h1>
-        ) : isError ? (
-          <h1>error...</h1>
-        ) : (
-          <CommentsList
-            ratedByData={ratedByData}
-            comments={comments}
-            deleteComment={deleteCommentMutate}
-            handleEditChange={handleEditChange}
-            handleSetEditCommentId={handleSetEditCommentId}
-            handleEditSubmit={editCommentMutate}
-          />
-        )}
-        {user && (
-          <div className="flex flex-col items-end space-y-4 py-10 ">
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              className="w-full border rounded-md border-neutral-500 resize-none p-2 focus:border-primary-500"
-              rows={4}
-            />
-            <Button
-              disabled={
-                comments.findIndex((comment) => {
-                  return comment.userId === user.uid;
-                }) !== -1
-              }
-              type="primary"
-              size="sm"
-              text="Leave a comment"
-              onClick={addCommentMutate}
-            />
-          </div>
-        )}
+
+        <CommentsList
+          editCommentId={editCommentId}
+          ratedByData={ratedByData}
+          comments={comments}
+          handleSetEditCommentId={handleSetEditCommentId}
+        />
+
+        {user &&
+          !createCommentLoading &&
+          !createCommentError &&
+          !getCommentsLoading &&
+          !getCommentsError && (
+            <div className="flex flex-col items-end space-y-4 py-10 ">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="w-full border rounded-md border-neutral-500 resize-none p-2 focus:border-primary-500"
+                rows={4}
+              />
+              <Button
+                disabled={
+                  comments.findIndex((comment) => {
+                    return comment.userId === user;
+                  }) !== -1
+                }
+                type="primary"
+                size="sm"
+                text="Leave a comment"
+                onClick={() => {
+                  {
+                    createCommentApollo();
+                    client.refetchQueries({
+                      include: [COMMENTS],
+                    });
+                  }
+                }}
+              />
+            </div>
+          )}
       </div>
-      <div className="w-full h-auto text-center space-y-8 py-8   border-neutral-500">
-        <p className="py-2 text-xl font-semibold uppercase bg-gradient-to-r   from-primary-600 to-primary-550 via-primary-500 text-neutral-900">
+
+      <div className="w-full h-auto text-center space-y-8 py-8 border-neutral-500">
+        <p className="py-2 text-xl font-semibold uppercase bg-gradient-to-r from-primary-600 to-primary-550 via-primary-500 text-neutral-900">
           You may also like
         </p>
         <SimilarProductsList productId={id} category={category} />
@@ -351,17 +323,47 @@ export default function Product({ product }: Props): JSX.Element {
 }
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  let product = {};
+  let product;
+  // ???
+  const id = context?.params?.id?.[0] || "1";
+  const { data } = await client.query({
+    query: PRODUCT,
+    variables: { id },
+  });
 
-  const productRef = doc(db, "productsList", context?.params?.id as string);
-  const productSnapshot = await getDoc(productRef);
-  if (productSnapshot.exists()) {
-    product = productSnapshot.data();
-  }
+  const userIdCookie = (await getIdFromServerCookie(context.req)) || "";
+
+  const {
+    title,
+    price,
+    rating: rate,
+    image,
+    ratingCount: count,
+    discount,
+    description,
+    category: categoryData,
+  } = data.products.data[0].attributes;
+  // const comments = commentData.data;
+
+  const rating = { rate, count };
+  const ratedBy = [{ rating: 5, userId: "1" }];
+  const category = categoryData.data.attributes.name;
+  product = {
+    id,
+    title,
+    category,
+    description,
+    price,
+    image,
+    rating,
+    discount,
+    ratedBy,
+  };
 
   return {
     props: {
       product,
+      userIdCookie,
     },
   };
 };

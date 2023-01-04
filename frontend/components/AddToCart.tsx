@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { useShoppingCart } from "../context/ShoppingCartContext";
-import { ProductCardInterface } from "../Models";
+import { ProductCardInterface, ProductInterface } from "../Models";
 import Button from "./Button";
 import SmallButton from "./SmallButton";
 
 interface Props {
-  product: ProductCardInterface;
+  product: ProductInterface;
 }
 
 const AddToCart = ({ product }: Props): JSX.Element => {
+  const { price, image, title, id } = product;
   const { addToCart } = useShoppingCart();
   const [quantity, setQuantity] = useState<number>(0);
 
   useEffect(() => {
     setQuantity(0);
   }, [product]);
-
+  const cartProduct = { id, title, price, image };
   return (
     <div className="flex items-center space-x-4">
       <div className="flex items-center justify-center space-x-2 bg-neutral-850 rounded-sm p-1">
@@ -28,7 +29,7 @@ const AddToCart = ({ product }: Props): JSX.Element => {
       </div>
 
       <Button
-        onClick={() => addToCart(product, quantity)}
+        onClick={() => addToCart(cartProduct, quantity)}
         text="Add to cart"
         type="primary"
         size="lg"

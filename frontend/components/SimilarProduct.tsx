@@ -1,10 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
-import { ProductInterface } from "Models";
+import { SimilarProductInterface } from "Models";
 import Link from "next/link";
 import { formatCurrency } from "../utilities/formatCurrency";
 
 interface Props {
-  product: ProductInterface;
+  product: SimilarProductInterface;
 }
 
 const SimilarProduct = ({ product }: Props): JSX.Element => {

@@ -29,7 +29,7 @@ export default function Star({
               ? `fa fa-star text-sm text-primary-600  ${
                   !commentRating && "cursor-pointer"
                 }`
-              : `fa fa-star text-sm text-neutral-500  ${
+              : `fa fa-star text-sm text-neutral-200  ${
                   !commentRating && "cursor-pointer"
                 }`
           }
@@ -41,7 +41,7 @@ export default function Star({
               ? `fa fa-star text-sm text-primary-600  ${
                   !commentRating && "cursor-pointer"
                 }`
-              : `fa fa-star text-sm text-neutral-500  ${
+              : `fa fa-star text-sm text-neutral-200  ${
                   !commentRating && "cursor-pointer"
                 }`
           }

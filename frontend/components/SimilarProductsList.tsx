@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Scrollbar, A11y } from "swiper";
 import "swiper/css";
@@ -5,10 +6,8 @@ import "swiper/css/navigation";
 import "swiper/css/pagination";
 import "swiper/css/scrollbar";
 import SimilarProduct from "./SimilarProduct";
-import { useEffect, useState } from "react";
-import { collection, getDocs, limit, query, where } from "firebase/firestore";
-import db from "../firebase/config";
-import { ProductInterface } from "Models";
+import { SimilarProductInterface } from "Models";
+import { gql, useQuery } from "@apollo/client";
 
 interface Props {
   category: string;
@@ -22,32 +21,43 @@ const breakpoints = {
   },
 };
 
-const SimilarProductsList = ({ category, productId }: Props): JSX.Element => {
-  const [similarProducts, setSimilarProducts] = useState<ProductInterface[]>(
-    []
-  );
-  // const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function getSimilarProducts() {
-      const similarProductsQuery = query(
-        collection(db, "productsList"),
-        where("category", "==", category),
-        limit(10)
-      );
-      const similarProductsSnapshot = await getDocs(similarProductsQuery);
-
-      let productData: ProductInterface[] = [];
-
-      similarProductsSnapshot.forEach((product) => {
-        return productData.push(product.data() as ProductInterface);
-      });
-      setSimilarProducts(productData);
+const SIMILAR_PRODUCTS = gql`
+  query GetSimilarProducts($category: String!) {
+    products(filters: { category: { name: { eq: $category } } }) {
+      data {
+        id
+        attributes {
+          image
+          title
+          price
+        }
+      }
     }
-    getSimilarProducts();
-  }, [category]);
+  }
+`;
 
-  if (!similarProducts) return <h1>loading...</h1>;
+const SimilarProductsList = ({ category, productId }: Props): JSX.Element => {
+  const [similarProducts, setSimilarProducts] = useState<
+    SimilarProductInterface[] | null
+  >(null);
+
+  const { error, loading, data } = useQuery(SIMILAR_PRODUCTS, {
+    variables: {
+      category,
+    },
+    onCompleted(data) {
+      // any
+      const similarProductsData = data.products.data.map((product: any) => {
+        const { id } = product;
+        const { price, image, title } = product.attributes;
+        return { id, price, image, title };
+      });
+      setSimilarProducts(similarProductsData);
+    },
+  });
+
+  if (!similarProducts || loading || !data) return <h1>loading...</h1>;
+  if (error) return <h1>error...</h1>;
   return (
     <Swiper
       loop={false}
@@ -58,8 +68,8 @@ const SimilarProductsList = ({ category, productId }: Props): JSX.Element => {
       breakpoints={breakpoints}
     >
       {similarProducts
-        .filter((product) => product.id !== productId)
-        .map((product) => (
+        .filter((product: SimilarProductInterface) => product.id !== productId)
+        .map((product: SimilarProductInterface) => (
           <SwiperSlide key={product.id}>
             <SimilarProduct product={product} />
           </SwiperSlide>
